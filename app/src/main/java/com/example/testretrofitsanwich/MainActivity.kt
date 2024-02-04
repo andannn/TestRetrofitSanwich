@@ -1,85 +1,60 @@
 package com.example.testretrofitsanwich
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.example.testretrofitsanwich.data.model.BeerModel
+import com.example.testretrofitsanwich.network.download.RequestParam
+import com.example.testretrofitsanwich.network.download.startDownLoadTask
 import com.example.testretrofitsanwich.ui.theme.TestRetrofitSanwichTheme
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import com.skydoves.sandwich.ApiResponse
-import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okhttp3.MediaType
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
-import retrofit2.http.GET
-import retrofit2.http.Query
+import timber.log.Timber
 
-@Serializable
-data class BeerDto(
-    val id: Int,
-    val name: String,
-    val tagline: String,
-    val description: String,
-    val first_brewed: String,
-    val image_url: String?
-)
-
-interface BeerApi {
-    @GET("beers")
-    suspend fun getBeers(
-        @Query("page") page: Int,
-        @Query("per_page") pageCount: Int
-    ): ApiResponse<List<BeerDto>>
-
-    companion object {
-        const val BASE_URL = "https://api.punkapi.com/v2/"
-    }
-}
+private const val TAG = "MainActivity"
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel by viewModels<MainViewModel>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val contentType = "application/json".toMediaType()
-        val json = Json {
-            // By default Kotlin serialization will serialize all of the keys present in JSON object and throw an
-            // exception if given key is not present in the Kotlin class. This flag allows to ignore JSON fields
-            ignoreUnknownKeys = true
-        }
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl(BeerApi.BASE_URL)
-            .addConverterFactory(json.asConverterFactory(contentType))
-            .addCallAdapterFactory(ApiResponseCallAdapterFactory.create())
-            .build()
-        val service = retrofit.create(BeerApi::class.java)
-        runBlocking {
-            val beers = service.getBeers(
-                page = 1,
-                pageCount = 3
-            )
-            println(beers)
-        }
-
-
+        Timber.plant(Timber.DebugTree())
 
         setContent {
             TestRetrofitSanwichTheme {
+                val bears by viewModel.beerList.collectAsState()
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+                    LazyColumn {
+                        items(
+                            items = bears,
+                            key = { it.id }
+                        ) {
+                            BearItem(bear = it)
+                        }
+                    }
                 }
             }
         }
@@ -87,17 +62,36 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
+fun BearItem(
+    modifier: Modifier = Modifier,
+    bear: BeerModel,
+) {
+    Card(
         modifier = modifier
-    )
+            .fillMaxWidth()
+
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 13.dp)
+        ) {
+            Text(text = bear.name)
+        }
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
     TestRetrofitSanwichTheme {
-        Greeting("Android")
+        BearItem(
+            bear = BeerModel(
+                id = 1,
+                name = "dfsdfsdf",
+                tagline = "Dfsdfsf",
+                description = "dfsdfdadsfafd",
+                firstBrewed = "sdfsdfsf",
+                imageUrl = "dvvvev",
+            )
+        )
     }
 }
